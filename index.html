@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Multiverso 360 - Portales de Playas</title>
+<script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
+<style>
+  html, body { margin: 0; width: 100%; height: 100%; overflow: hidden; background: #000; }
+  #hud {
+    position: absolute; bottom: 40px; left: 50%; transform: translateX(-50%);
+    color: #fbc531; font-family: 'Segoe UI', sans-serif; font-size: 15px; letter-spacing: 1px;
+    background: rgba(15,15,25,.85); border: 1px solid rgba(251,197,49,.4);
+    padding: 12px 28px; border-radius: 30px; z-index: 10; pointer-events: none;
+    text-align: center; box-shadow: 0 0 25px rgba(251,197,49,.25);
+  }
+</style>
+</head>
+<body>
+<div id="hud"></div>
+
+<a-scene embedded vr-mode-ui="enabled: true">
+  <a-assets>
+    <img id="img-caribena"    src="playa_caribena.svg">
+    <img id="img-apocaliptica" src="playa_apocaliptica.svg">
+    <img id="img-fantastica"  src="playa_fantastica.svg">
+  </a-assets>
+
+  <a-sky id="sky" src="#img-caribena"></a-sky>
+  <a-light type="ambient" color="#ddd"></a-light>
+
+  <a-entity id="portals"></a-entity>
+
+  <a-entity camera look-controls position="0 1.6 0">
+    <a-cursor fuse="true" fuse-timeout="1500"
+              raycaster="objects: .portal"
+              material="color: #fffa65; shader: flat"
+              geometry="primitive: ring; radiusInner: 0.015; radiusOuter: 0.025"
+              animation__fuse="property: scale; startEvents: fusing; to: 1.8 1.8 1.8; dur: 1500"
+              animation__leave="property: scale; startEvents: mouseleave; to: 1 1 1; dur: 200">
+    </a-cursor>
+  </a-entity>
+</a-scene>
+
+<script>
+  // ---- CONFIGURACIÓN DE ESCENAS Y PORTALES ----
+  // angle: dirección del portal alrededor tuyo (0 = al frente, positivo = derecha)
+  const SCENES = {
+    caribena: {
+      nombre: "Playa Caribeña", img: "#img-caribena",
+      portales: [{ destino: "apocaliptica", angle: 40, color: "#ff3838" }]
+    },
+    apocaliptica: {
+      nombre: "Playa Apocalíptica", img: "#img-apocaliptica",
+      portales: [
+        { destino: "caribena",  angle: -40, color: "#18dcff" },
+        { destino: "fantastica", angle: 40,  color: "#c56cf0" }
+      ]
+    },
+    fantastica: {
+      nombre: "Playa Fantástica", img: "#img-fantastica",
+      portales: [{ destino: "apocaliptica", angle: -40, color: "#ff3838" }]
+    }
+  };
+
+  const sky = document.querySelector('#sky');
+  const portals = document.querySelector('#portals');
+  const hud = document.querySelector('#hud');
+  const MSG = "✨ Mantén la mirada fija en un portal para atravesarlo ✨";
+
+  function cargarEscena(id) {
+    const escena = SCENES[id];
+    sky.setAttribute('src', escena.img);
+    portals.innerHTML = '';
+    hud.textContent = "🌌 " + escena.nombre + " 🌌";
+    setTimeout(() => hud.textContent = MSG, 2500);
+
+    escena.portales.forEach(p => {
+      const destino = SCENES[p.destino];
+      const rad = THREE.MathUtils.degToRad(p.angle);
+      const dist = 4;
+      const x = Math.sin(rad) * dist;
+      const z = -Math.cos(rad) * dist;
+
+      const portal = document.createElement('a-sphere');
+      portal.classList.add('portal');
+      portal.setAttribute('radius', 0.75);
+      portal.setAttribute('position', `${x} 1.6 ${z}`);
+      portal.setAttribute('material', `color: ${p.color}; emissive: ${p.color}; emissiveIntensity: 0.6; opacity: 0.55; transparent: true`);
+      portal.setAttribute('animation__float', 'property: position; dir: alternate; dur: 2000; loop: true; easing: easeInOutSine; to: ' + x + ' 1.9 ' + z);
+      portal.innerHTML = `
+        <a-torus radius="0.9" radius-tubular="0.03" material="color: #ffa801; emissive: #ffb142; emissiveIntensity: 0.9"
+                 animation="property: rotation; to: 0 360 360; loop: true; dur: 8000; easing: linear"></a-torus>
+        <a-torus radius="1.05" radius-tubular="0.015" material="color: #fffa65; emissive: #fff200; opacity: 0.8; transparent: true"
+                 animation="property: rotation; to: 360 0 360; loop: true; dur: 12000; easing: linear"></a-torus>
+        <a-text value="Ir a ${destino.nombre}" align="center" position="0 1.4 0" scale="1.2 1.2 1.2" color="#fff"></a-text>`;
+
+      portal.addEventListener('click', () => cargarEscena(p.destino));
+      portal.addEventListener('fusing', () => { hud.textContent = "✨ Abriendo portal... sostén la mirada ✨"; hud.style.color = "#2ed573"; });
+      portal.addEventListener('mouseleave', () => { hud.textContent = MSG; hud.style.color = "#fbc531"; });
+      portals.appendChild(portal);
+    });
+  }
+
+  document.querySelector('a-scene').addEventListener('loaded', () => cargarEscena('caribena'));
+</script>
+</body>
+</html>
